@@ -1,5 +1,20 @@
 <h2>Time Entries</h2>
 
+<div class="toolbar">
+  <button type="button" (click)="openNew()">New entry</button>
+</div>
+
+@if (successMessage(); as message) {
+  <p class="success" role="status">
+    {{ message }}
+    <button type="button" class="dismiss" (click)="dismissSuccess()" aria-label="Dismiss">×</button>
+  </p>
+}
+
+@if (formOpen()) {
+  <app-entry-form [entry]="editing()" (saved)="onSaved($event)" (cancelled)="onCancelled()" />
+}
+
 @if (loading()) {
   <p class="loading">Loading…</p>
 } @else if (failed()) {
@@ -16,6 +31,7 @@
         <th scope="col">Start</th>
         <th scope="col">End</th>
         <th scope="col">Created At</th>
+        <th scope="col"><span class="visually-hidden">Actions</span></th>
       </tr>
     </thead>
     <tbody>
@@ -27,6 +43,7 @@
           <td>{{ entry.start | date: 'medium' }}</td>
           <td>{{ entry.end | date: 'medium' }}</td>
           <td>{{ entry.createdAt | date: 'short' }}</td>
+          <td><button type="button" class="edit" (click)="openEdit(entry)">Edit</button></td>
         </tr>
       }
     </tbody>

@@ -1,0 +1,82 @@
+<form class="entry-form" [formGroup]="form" (ngSubmit)="submit()">
+  @if (entry(); as entry) {
+    <h3>Edit entry #{{ entry.id }}</h3>
+  } @else {
+    <h3>New entry</h3>
+  }
+
+  <label for="taskId">
+    Task ID
+    <input
+      id="taskId"
+      type="number"
+      formControlName="taskId"
+      [attr.aria-invalid]="showError('taskId')"
+      [attr.aria-describedby]="showError('taskId') ? 'taskId-error' : null"
+    />
+  </label>
+  @if (showError('taskId')) {
+    <p class="field-error" id="taskId-error">
+      @if (form.controls.taskId.hasError('required')) {
+        Task ID is required.
+      } @else {
+        Task ID must be a positive integer.
+      }
+    </p>
+  }
+
+  <label for="comment">
+    Comment
+    <input
+      id="comment"
+      type="text"
+      formControlName="comment"
+      [attr.aria-invalid]="showError('comment')"
+      [attr.aria-describedby]="showError('comment') ? 'comment-error' : null"
+    />
+  </label>
+  @if (showError('comment')) {
+    <p class="field-error" id="comment-error">Comment is required.</p>
+  }
+
+  <label for="start">
+    Start
+    <input
+      id="start"
+      type="datetime-local"
+      formControlName="start"
+      [attr.aria-invalid]="showError('start') || showEndNotAfterStart()"
+      [attr.aria-describedby]="showError('start') ? 'start-error' : null"
+    />
+  </label>
+  @if (showError('start')) {
+    <p class="field-error" id="start-error">Start is required.</p>
+  }
+
+  <label for="end">
+    End
+    <input
+      id="end"
+      type="datetime-local"
+      formControlName="end"
+      [attr.aria-invalid]="showError('end') || showEndNotAfterStart()"
+      [attr.aria-describedby]="showEndNotAfterStart() ? 'end-group-error' : showError('end') ? 'end-error' : null"
+    />
+  </label>
+  @if (showError('end')) {
+    <p class="field-error" id="end-error">End is required.</p>
+  }
+
+  @if (showEndNotAfterStart()) {
+    <p class="field-error" id="end-group-error">End must be after start.</p>
+  }
+
+  @if (apiError(); as message) {
+    <p class="api-error" role="alert">{{ message }}</p>
+  }
+
+  <div class="actions">
+    <button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save' }}</button>
+    <button type="button" class="cancel" (click)="cancelled.emit()">Cancel</button>
+  </div>
+</form>

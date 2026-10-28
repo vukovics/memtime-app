@@ -1,9 +1,12 @@
 import { formatDate } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ApiService } from '../../api.service';
 import { TimeEntry } from '../../api.types';
+import { isoToLocalInput } from './datetime';
+import { EntryForm } from './entry-form';
 import { TimeEntries } from './time-entries';
 
 const START = '2026-01-15T09:00:00.000Z';
@@ -134,9 +137,7 @@ describe('TimeEntries', () => {
   });
 
   it('keeps Prev reachable when a later page comes back empty (e.g. entries deleted)', async () => {
-    api.getTimeEntries
-      .mockReturnValueOnce(of(fullPage(1)))
-      .mockReturnValueOnce(of([]));
+    api.getTimeEntries.mockReturnValueOnce(of(fullPage(1))).mockReturnValueOnce(of([]));
     const fixture = await create();
 
     button(fixture, 'Next').click();
@@ -164,6 +165,81 @@ describe('TimeEntries', () => {
     expect(api.getTimeEntries).toHaveBeenCalledTimes(2);
     expect(api.getTimeEntries).toHaveBeenLastCalledWith({ limit: 10, offset: 0 });
     expect(text(fixture)).toContain('Entry 1');
+  });
+
+  function entryForm(fixture: ComponentFixture<TimeEntries>): EntryForm | null {
+    return fixture.debugElement.query(By.directive(EntryForm))?.componentInstance ?? null;
+  }
+
+  it('"New entry" opens an empty form; Cancel closes it without refetching', async () => {
+    const fixture = await create();
+    expect(entryForm(fixture)).toBeNull();
+
+    button(fixture, 'New entry').click();
+    await fixture.whenStable();
+    const form = entryForm(fixture);
+    expect(form).not.toBeNull();
+    expect(form!.entry()).toBeNull();
+    expect(form!.form.getRawValue()).toEqual({ taskId: null, comment: '', start: '', end: '' });
+
+    button(fixture, 'Cancel').click();
+    await fixture.whenStable();
+    expect(entryForm(fixture)).toBeNull();
+    expect(api.getTimeEntries).toHaveBeenCalledTimes(1);
+  });
+
+  it("a row's Edit button opens the form prefilled with that entry", async () => {
+    const fixture = await create();
+    button(fixture, 'Edit').click(); // first row: entry 1
+    await fixture.whenStable();
+    const form = entryForm(fixture);
+    expect(form!.entry()?.id).toBe(1);
+    expect(form!.form.getRawValue()).toEqual({
+      taskId: 10,
+      comment: 'Entry 1',
+      start: isoToLocalInput(START),
+      end: isoToLocalInput(END),
+    });
+  });
+
+  it('switching from Edit to "New entry" without closing clears the stale edit target', async () => {
+    const fixture = await create();
+    button(fixture, 'Edit').click(); // first row: entry 1
+    await fixture.whenStable();
+    expect(entryForm(fixture)!.entry()?.id).toBe(1);
+
+    button(fixture, 'New entry').click();
+    await fixture.whenStable();
+    const form = entryForm(fixture);
+    expect(form!.entry()).toBeNull();
+    expect(form!.form.getRawValue()).toEqual({ taskId: null, comment: '', start: '', end: '' });
+  });
+
+  it('on saved it reloads the list, closes the form, and shows a dismissible success message', async () => {
+    const fixture = await create();
+    button(fixture, 'New entry').click();
+    await fixture.whenStable();
+
+    entryForm(fixture)!.saved.emit(makeEntry(5));
+    await fixture.whenStable();
+    expect(entryForm(fixture)).toBeNull();
+    expect(api.getTimeEntries).toHaveBeenCalledTimes(2);
+    expect(text(fixture)).toContain('Entry #5 created');
+
+    button(fixture, '×').click();
+    await fixture.whenStable();
+    expect(text(fixture)).not.toContain('Entry #5 created');
+  });
+
+  it('reports "updated" when the save came from an edit', async () => {
+    const fixture = await create();
+    button(fixture, 'Edit').click();
+    await fixture.whenStable();
+
+    entryForm(fixture)!.saved.emit(makeEntry(1));
+    await fixture.whenStable();
+    expect(text(fixture)).toContain('Entry #1 updated');
+    expect(api.getTimeEntries).toHaveBeenCalledTimes(2);
   });
 
   it('reload() refetches the current page in place', async () => {
