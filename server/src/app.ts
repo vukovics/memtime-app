@@ -6,7 +6,7 @@ import {
   type UpstreamClient,
   type UpstreamErrorKind,
 } from "./upstream/client.js";
-import type { ListParams } from "./upstream/types.js";
+import type { ListParams, TimeEntryInput } from "./upstream/types.js";
 
 export interface AppDeps {
   upstream: UpstreamClient;
@@ -66,6 +66,58 @@ function parseId(raw: string, name: string): number {
   return Number(raw);
 }
 
+// Standard ISO 8601 datetime: date, "T", time, optional seconds/millis,
+// optional Z or numeric offset. Date-only strings and garbage are rejected.
+const ISO_DATETIME =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+/** True for standard ISO 8601 datetimes that parse to a real instant. */
+function isIsoDateTime(value: string): boolean {
+  return ISO_DATETIME.test(value) && Number.isFinite(Date.parse(value));
+}
+
+/**
+ * Validates a POST/PUT time-entry body. Returns the normalized input
+ * (comment trimmed) or throws BadRequestError naming every invalid field.
+ * Exported for tests.
+ */
+export function validateTimeEntryInput(body: unknown): TimeEntryInput {
+  const record: Record<string, unknown> =
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>)
+      : {};
+  const errors: string[] = [];
+
+  const { taskId, comment, start, end } = record;
+  if (typeof taskId !== "number" || !Number.isInteger(taskId) || taskId <= 0) {
+    errors.push('"taskId" must be a positive integer');
+  }
+  if (typeof comment !== "string" || comment.trim() === "") {
+    errors.push('"comment" must be a non-empty string');
+  }
+  if (typeof start !== "string" || !isIsoDateTime(start)) {
+    errors.push('"start" must be an ISO 8601 datetime');
+  }
+  if (typeof end !== "string" || !isIsoDateTime(end)) {
+    errors.push('"end" must be an ISO 8601 datetime');
+  } else if (
+    errors.length === 0 &&
+    Date.parse(end) <= Date.parse(start as string)
+  ) {
+    errors.push('"end" must be strictly after "start"');
+  }
+
+  if (errors.length > 0) {
+    throw new BadRequestError(errors.join("; "));
+  }
+  return {
+    taskId: taskId as number,
+    comment: (comment as string).trim(),
+    start: start as string,
+    end: end as string,
+  };
+}
+
 /** Cache key: request path plus the forwarded params, sorted by name. */
 function cacheKey(path: string, params: ListParams | undefined): string {
   if (params === undefined) return path;
@@ -115,6 +167,39 @@ export function createApp(deps: AppDeps): express.Express {
     );
   });
 
+  // Time entries are the user's own fresh data: always rate-limit queued,
+  // never cached.
+  app.use("/api/time-entries", express.json());
+
+  app.get("/api/time-entries", async (req, res) => {
+    const params = parseListParams(req.query);
+    const result = await queue.run(() => upstream.listTimeEntries(params));
+    res.status(200).json(result);
+  });
+
+  app.get("/api/time-entries/:id", async (req, res) => {
+    const id = parseId(req.params.id, "time entry id");
+    res.status(200).json(await queue.run(() => upstream.getTimeEntry(id)));
+  });
+
+  app.post("/api/time-entries", async (req, res) => {
+    const input = validateTimeEntryInput(req.body);
+    const created = await queue.run(() => upstream.createTimeEntry(input));
+    res.status(201).json(created);
+  });
+
+  app.put("/api/time-entries/:id", async (req, res) => {
+    const id = parseId(req.params.id, "time entry id");
+    const input = validateTimeEntryInput(req.body);
+    const updated = await queue.run(() => upstream.updateTimeEntry(id, input));
+    res.status(200).json(updated);
+  });
+
+  app.delete("/api/time-entries/:id", async (req, res) => {
+    const id = parseId(req.params.id, "time entry id");
+    res.status(200).json(await queue.run(() => upstream.deleteTimeEntry(id)));
+  });
+
   app.use("/api", (_req, res) => {
     res.status(404).json({ error: "Not found" });
   });
@@ -126,6 +211,17 @@ export function createApp(deps: AppDeps): express.Express {
       res: express.Response,
       _next: express.NextFunction,
     ) => {
+      // express.json() reports malformed bodies as a SyntaxError with
+      // status 400 and type "entity.parse.failed"; narrow on both so an
+      // unrelated SyntaxError elsewhere isn't misreported as a bad body.
+      if (
+        err instanceof SyntaxError &&
+        (err as { status?: unknown }).status === 400 &&
+        (err as { type?: unknown }).type === "entity.parse.failed"
+      ) {
+        res.status(400).json({ error: "Invalid JSON body" });
+        return;
+      }
       if (err instanceof BadRequestError) {
         res.status(400).json({ error: err.message });
         return;
