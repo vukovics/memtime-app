@@ -1,0 +1,18 @@
+<header>
+  <h1>Memtime</h1>
+  <nav>
+    <a routerLink="/browse" routerLinkActive="active">Browse</a>
+    <a routerLink="/time-entries" routerLinkActive="active">Time Entries</a>
+  </nav>
+</header>
+
+@if (errorService.message(); as message) {
+  <div class="error-banner" role="alert">
+    <span>{{ message }}</span>
+    <button type="button" (click)="errorService.dismiss()">Dismiss</button>
+  </div>
+}
+
+<main>
+  <router-outlet />
+</main>
