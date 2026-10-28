@@ -2,5 +2,25 @@
   "name": "@memtime/server",
   "version": "0.0.0",
   "private": true,
-  "description": "Express + TypeScript proxy server for the Memtime demo API"
+  "description": "Express + TypeScript proxy server for the Memtime demo API",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "build": "tsc",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^5.0.5",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
 }
