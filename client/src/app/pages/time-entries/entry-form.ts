@@ -26,6 +26,8 @@ export class EntryForm {
 
   /** Entry being edited, or null for a new one. */
   readonly entry = input<TimeEntry | null>(null);
+  /** Task ID to prefill when creating (e.g. "Log time" from the browse tree). */
+  readonly initialTaskId = input<number | null>(null);
   readonly saved = output<TimeEntry>();
   readonly cancelled = output<void>();
 
@@ -59,7 +61,15 @@ export class EntryForm {
           end: isoToLocalInput(entry.end),
         });
       } else {
-        this.form.reset();
+        // New entries default to a plausible recent interval: the last hour.
+        const end = new Date();
+        const start = new Date(end.getTime() - 60 * 60 * 1000);
+        this.form.reset({
+          taskId: this.initialTaskId(),
+          comment: '',
+          start: isoToLocalInput(start.toISOString()),
+          end: isoToLocalInput(end.toISOString()),
+        });
       }
       this.apiError.set(null);
     });

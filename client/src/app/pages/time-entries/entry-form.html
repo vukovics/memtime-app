@@ -60,7 +60,9 @@
       type="datetime-local"
       formControlName="end"
       [attr.aria-invalid]="showError('end') || showEndNotAfterStart()"
-      [attr.aria-describedby]="showEndNotAfterStart() ? 'end-group-error' : showError('end') ? 'end-error' : null"
+      [attr.aria-describedby]="
+        showEndNotAfterStart() ? 'end-group-error' : showError('end') ? 'end-error' : null
+      "
     />
   </label>
   @if (showError('end')) {

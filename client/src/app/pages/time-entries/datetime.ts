@@ -15,3 +15,16 @@ export function isoToLocalInput(iso: string): string {
     `T${pad(date.getHours())}:${pad(date.getMinutes())}`
   );
 }
+
+/**
+ * Formats the interval between two ISO timestamps as "2h 15m", "2h" or "45m"
+ * (whole minutes; zero or negative intervals render as "0m").
+ */
+export function formatDuration(startIso: string, endIso: string): string {
+  const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
+  const minutes = Math.max(0, Math.floor(ms / 60_000));
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}

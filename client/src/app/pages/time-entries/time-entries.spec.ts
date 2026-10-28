@@ -1,10 +1,13 @@
 import { formatDate } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { Router, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ApiService } from '../../api.service';
 import { TimeEntry } from '../../api.types';
+import { appConfig } from '../../app.config';
 import { isoToLocalInput } from './datetime';
 import { EntryForm } from './entry-form';
 import { TimeEntries } from './time-entries';
@@ -31,14 +34,24 @@ function fullPage(startId: number): TimeEntry[] {
 }
 
 describe('TimeEntries', () => {
-  let api: { getTimeEntries: ReturnType<typeof vi.fn> };
+  let api: {
+    getTimeEntries: ReturnType<typeof vi.fn>;
+    deleteTimeEntry: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
-    api = { getTimeEntries: vi.fn().mockReturnValue(of([makeEntry(1), makeEntry(2)])) };
+    api = {
+      getTimeEntries: vi.fn().mockReturnValue(of([makeEntry(1), makeEntry(2)])),
+      deleteTimeEntry: vi.fn().mockReturnValue(of({ success: true })),
+    };
     await TestBed.configureTestingModule({
       imports: [TimeEntries],
-      providers: [{ provide: ApiService, useValue: api }],
+      providers: [provideRouter([]), { provide: ApiService, useValue: api }],
     }).compileComponents();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   async function create(): Promise<ComponentFixture<TimeEntries>> {
@@ -90,11 +103,22 @@ describe('TimeEntries', () => {
 
   it('renders dates in a human-readable format, not raw ISO strings', async () => {
     const fixture = await create();
-    const [, , , start, end, createdAt] = cells(fixture, 0);
+    const [, , , start, end, , createdAt] = cells(fixture, 0);
     expect(start).not.toBe(START);
     expect(start).toBe(formatDate(START, 'medium', 'en-US'));
     expect(end).toBe(formatDate(END, 'medium', 'en-US'));
     expect(createdAt).toBe(formatDate(CREATED, 'short', 'en-US'));
+  });
+
+  it('renders a Duration column between End and Created At', async () => {
+    const fixture = await create();
+    const headers = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('th'),
+      (th) => th.textContent?.trim() ?? '',
+    );
+    expect(headers.slice(4, 7)).toEqual(['End', 'Duration', 'Created At']);
+    const [, , , , , duration] = cells(fixture, 0);
+    expect(duration).toBe('1h 30m'); // 09:00Z -> 10:30Z
   });
 
   it('fetches the next offset on Next when the page is full, and Prev returns', async () => {
@@ -180,7 +204,7 @@ describe('TimeEntries', () => {
     const form = entryForm(fixture);
     expect(form).not.toBeNull();
     expect(form!.entry()).toBeNull();
-    expect(form!.form.getRawValue()).toEqual({ taskId: null, comment: '', start: '', end: '' });
+    expect(form!.form.getRawValue()).toMatchObject({ taskId: null, comment: '' });
 
     button(fixture, 'Cancel').click();
     await fixture.whenStable();
@@ -212,7 +236,7 @@ describe('TimeEntries', () => {
     await fixture.whenStable();
     const form = entryForm(fixture);
     expect(form!.entry()).toBeNull();
-    expect(form!.form.getRawValue()).toEqual({ taskId: null, comment: '', start: '', end: '' });
+    expect(form!.form.getRawValue()).toMatchObject({ taskId: null, comment: '' });
   });
 
   it('on saved it reloads the list, closes the form, and shows a dismissible success message', async () => {
@@ -257,5 +281,87 @@ describe('TimeEntries', () => {
     expect(api.getTimeEntries).toHaveBeenLastCalledWith({ limit: 10, offset: 10 });
     expect(text(fixture)).toContain('Entry 21');
     expect(text(fixture)).toContain('Page 2');
+  });
+
+  it("a row's Delete button confirms, deletes, reloads, and reports success", async () => {
+    const confirmSpy = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('confirm', confirmSpy);
+    const fixture = await create();
+
+    button(fixture, 'Delete').click(); // first row: entry 1
+    await fixture.whenStable();
+    expect(confirmSpy).toHaveBeenCalledExactlyOnceWith('Delete entry #1?');
+    expect(api.deleteTimeEntry).toHaveBeenCalledExactlyOnceWith(1);
+    expect(api.getTimeEntries).toHaveBeenCalledTimes(2); // initial load + reload
+    expect(text(fixture)).toContain('Entry #1 deleted');
+  });
+
+  it('does not delete when the confirmation is declined', async () => {
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(false));
+    const fixture = await create();
+
+    button(fixture, 'Delete').click();
+    await fixture.whenStable();
+    expect(api.deleteTimeEntry).not.toHaveBeenCalled();
+    expect(api.getTimeEntries).toHaveBeenCalledTimes(1);
+    expect(text(fixture)).not.toContain('deleted');
+  });
+
+  it('shows no success message and does not reload when the delete fails', async () => {
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+    api.deleteTimeEntry.mockReturnValue(throwError(() => new Error('upstream down')));
+    const fixture = await create();
+
+    button(fixture, 'Delete').click();
+    await fixture.whenStable();
+    expect(api.deleteTimeEntry).toHaveBeenCalledExactlyOnceWith(1);
+    expect(api.getTimeEntries).toHaveBeenCalledTimes(1);
+    expect(text(fixture)).not.toContain('deleted');
+  });
+
+  it('opens an unprefilled create form for an unparseable taskId query param and cleans the URL', async () => {
+    const fixture = await create();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    fixture.componentRef.setInput('taskId', 'abc');
+    await fixture.whenStable();
+    const form = entryForm(fixture);
+    expect(form).not.toBeNull();
+    expect(form!.entry()).toBeNull();
+    expect(form!.form.getRawValue().taskId).toBeNull();
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(
+      [],
+      expect.objectContaining({
+        queryParams: { taskId: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      }),
+    );
+  });
+});
+
+describe('TimeEntries routed with a taskId query param', () => {
+  it('opens a prefilled create form and removes the param from the URL', async () => {
+    const api = {
+      getTimeEntries: vi.fn().mockReturnValue(of([])),
+      deleteTimeEntry: vi.fn(),
+    };
+    // The real appConfig (routes + withComponentInputBinding) wires the query
+    // param to the component input; only the API is stubbed out.
+    TestBed.configureTestingModule({
+      providers: [...appConfig.providers, { provide: ApiService, useValue: api }],
+    });
+
+    const harness = await RouterTestingHarness.create();
+    const page = await harness.navigateByUrl('/time-entries?taskId=42', TimeEntries);
+    await harness.fixture.whenStable();
+
+    expect(page.formOpen()).toBe(true);
+    expect(page.editing()).toBeNull();
+    const form = harness.fixture.debugElement.query(By.directive(EntryForm))
+      .componentInstance as EntryForm;
+    expect(form.form.getRawValue().taskId).toBe(42);
+    // The param was consumed and replaced, so a refresh will not re-open the form.
+    expect(TestBed.inject(Router).url).toBe('/time-entries');
   });
 });

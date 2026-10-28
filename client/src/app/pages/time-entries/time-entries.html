@@ -12,7 +12,12 @@
 }
 
 @if (formOpen()) {
-  <app-entry-form [entry]="editing()" (saved)="onSaved($event)" (cancelled)="onCancelled()" />
+  <app-entry-form
+    [entry]="editing()"
+    [initialTaskId]="prefillTaskId()"
+    (saved)="onSaved($event)"
+    (cancelled)="onCancelled()"
+  />
 }
 
 @if (loading()) {
@@ -30,6 +35,7 @@
         <th scope="col">Comment</th>
         <th scope="col">Start</th>
         <th scope="col">End</th>
+        <th scope="col">Duration</th>
         <th scope="col">Created At</th>
         <th scope="col"><span class="visually-hidden">Actions</span></th>
       </tr>
@@ -42,8 +48,12 @@
           <td>{{ entry.comment }}</td>
           <td>{{ entry.start | date: 'medium' }}</td>
           <td>{{ entry.end | date: 'medium' }}</td>
+          <td>{{ formatDuration(entry.start, entry.end) }}</td>
           <td>{{ entry.createdAt | date: 'short' }}</td>
-          <td><button type="button" class="edit" (click)="openEdit(entry)">Edit</button></td>
+          <td class="actions">
+            <button type="button" class="edit" (click)="openEdit(entry)">Edit</button>
+            <button type="button" class="delete" (click)="deleteEntry(entry)">Delete</button>
+          </td>
         </tr>
       }
     </tbody>

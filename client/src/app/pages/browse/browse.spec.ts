@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { ApiService } from '../../api.service';
@@ -6,7 +7,14 @@ import { Client, Project, Task } from '../../api.types';
 import { Browse } from './browse';
 
 function makeClient(id: number): Client {
-  return { id, name: `Client ${id}`, description: '', status: 'active', createdAt: '', updatedAt: '' };
+  return {
+    id,
+    name: `Client ${id}`,
+    description: '',
+    status: 'active',
+    createdAt: '',
+    updatedAt: '',
+  };
 }
 
 function makeProject(id: number, clientId: number): Project {
@@ -32,7 +40,7 @@ describe('Browse', () => {
     };
     await TestBed.configureTestingModule({
       imports: [Browse],
-      providers: [{ provide: ApiService, useValue: api }],
+      providers: [provideRouter([]), { provide: ApiService, useValue: api }],
     }).compileComponents();
   });
 
@@ -55,7 +63,9 @@ describe('Browse', () => {
   }
 
   function loadMoreButton(fixture: ComponentFixture<Browse>): HTMLButtonElement | null {
-    return (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button.load-more');
+    return (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'button.load-more',
+    );
   }
 
   it('loads only the first page of clients on init', async () => {
@@ -219,7 +229,9 @@ describe('Browse', () => {
 
   it('shows Load more for projects after a full page and appends the next offset', async () => {
     const firstPage = Array.from({ length: 10 }, (_, i) => makeProject(i + 1, 1));
-    api.getProjects.mockReturnValueOnce(of(firstPage)).mockReturnValueOnce(of([makeProject(11, 1)]));
+    api.getProjects
+      .mockReturnValueOnce(of(firstPage))
+      .mockReturnValueOnce(of([makeProject(11, 1)]));
     const fixture = await create();
 
     rowButton(fixture, 'Client 1').click();
@@ -238,7 +250,9 @@ describe('Browse', () => {
   it('shows a loading indicator in place of Load more while fetching the next page of projects', async () => {
     const firstPage = Array.from({ length: 10 }, (_, i) => makeProject(i + 1, 1));
     const secondPage$ = new Subject<Project[]>();
-    api.getProjects.mockReturnValueOnce(of(firstPage)).mockReturnValueOnce(secondPage$.asObservable());
+    api.getProjects
+      .mockReturnValueOnce(of(firstPage))
+      .mockReturnValueOnce(secondPage$.asObservable());
     const fixture = await create();
 
     rowButton(fixture, 'Client 1').click();
@@ -288,6 +302,27 @@ describe('Browse', () => {
     tasks$.complete();
     await fixture.whenStable();
     expect(text(fixture)).toContain('Task 100');
+  });
+
+  it('a task\'s "Log time" button navigates to time-entries with the task id as a query param', async () => {
+    api.getProjects.mockReturnValue(of([makeProject(10, 1)]));
+    api.getTasks.mockReturnValue(of([makeTask(100, 10)]));
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const fixture = await create();
+
+    rowButton(fixture, 'Client 1').click();
+    await fixture.whenStable();
+    rowButton(fixture, 'Project 10').click();
+    await fixture.whenStable();
+
+    const logTime = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      'button.log-time',
+    );
+    expect(logTime).not.toBeNull();
+    logTime!.click();
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(['/time-entries'], {
+      queryParams: { taskId: 100 },
+    });
   });
 
   it('shows Load more for tasks after a full page and appends the next offset', async () => {

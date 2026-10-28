@@ -48,6 +48,22 @@
   font-style: italic;
 }
 
+.log-time {
+  margin-left: 0.5rem;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0 0.375rem;
+  font: inherit;
+  font-size: 0.75rem;
+  color: #555;
+  cursor: pointer;
+}
+
+.log-time:hover {
+  background: #f0f0f0;
+}
+
 .load-more {
   background: none;
   border: 1px solid #ccc;

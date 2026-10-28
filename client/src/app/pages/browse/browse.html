@@ -25,7 +25,9 @@
                 [attr.aria-expanded]="projectNode.expanded"
                 (click)="toggleProject(projectNode)"
               >
-                <span class="marker" aria-hidden="true">{{ projectNode.expanded ? '▾' : '▸' }}</span>
+                <span class="marker" aria-hidden="true">{{
+                  projectNode.expanded ? '▾' : '▸'
+                }}</span>
                 <span>{{ projectNode.project.name }}</span>
                 @if (projectNode.loadingTasks && projectNode.tasks === null) {
                   <span class="loading">Loading…</span>
@@ -34,7 +36,12 @@
               @if (projectNode.expanded) {
                 <ul>
                   @for (task of projectNode.tasks; track task.id) {
-                    <li class="leaf">{{ task.name }}</li>
+                    <li class="leaf">
+                      <span>{{ task.name }}</span>
+                      <button type="button" class="log-time" (click)="logTime(task)">
+                        Log time
+                      </button>
+                    </li>
                   } @empty {
                     <li class="empty">No tasks</li>
                   }

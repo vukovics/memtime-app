@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { ApiService } from '../../api.service';
 import { Client, Project, Task } from '../../api.types';
 
@@ -34,6 +35,7 @@ interface ProjectNode {
 })
 export class Browse {
   private readonly api = inject(ApiService);
+  private readonly router = inject(Router);
 
   readonly clientNodes = signal<ClientNode[]>([]);
   readonly clientsLoading = signal(false);
@@ -110,6 +112,11 @@ export class Browse {
         this.refresh();
       },
     });
+  }
+
+  /** Jumps to the time-entries page, which opens a create form for this task. */
+  logTime(task: Task): void {
+    void this.router.navigate(['/time-entries'], { queryParams: { taskId: task.id } });
   }
 
   /** Nodes are mutated in place; cloning the top-level array notifies the signal. */
