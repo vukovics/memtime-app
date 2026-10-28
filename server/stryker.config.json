@@ -1,6 +1,11 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
-  "mutate": ["src/upstream/client.ts", "src/rateLimitQueue.ts", "src/cache.ts"],
+  "mutate": [
+    "src/upstream/client.ts",
+    "src/rateLimitQueue.ts",
+    "src/cache.ts",
+    "src/app.ts"
+  ],
   "ignorePatterns": ["/tsconfig.json"],
   "testRunner": "vitest",
   "reporters": ["html", "clear-text"]

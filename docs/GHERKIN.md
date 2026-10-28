@@ -101,7 +101,10 @@ Feature: Proxy routes for clients, projects, tasks
       | /api/projects/:id/tasks   |
 
   Scenario: Served through cache and queue (second identical request hits no upstream)
-  Scenario: Upstream 404 becomes a 404 JSON error via the shared error middleware
+  Scenario: Unknown parent id on a list route passes through as the upstream's 200 []
+    (upstream reserves 404 for direct single-resource gets, which these routes do not expose)
+  Scenario: Upstream errors (400/404/429/5xx) become JSON errors via the shared middleware
+    (429 maps to 503 with Retry-After so proxy clients never see a raw upstream 429)
 ```
 
 ## MT-7: Time-entry routes

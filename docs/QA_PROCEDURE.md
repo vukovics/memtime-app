@@ -37,7 +37,7 @@ Sign-off: fill the log at the bottom (PASS/FAIL, date, notes).
 1. `curl "localhost:3000/api/clients?limit=5"` → ✅ 200, ≤5 clients, upstream shape.
 2. Real ids: `/api/clients/<id>/projects`, `/api/projects/<id>/tasks` → ✅ 200 arrays.
 3. `sortBy=name&order=desc` → ✅ order respected (params forwarded).
-4. `/api/clients/999999/projects` → ✅ 404 JSON error.
+4. `/api/clients/999999/projects` → ✅ 200 `[]` (real upstream behavior: list endpoints return an empty array for unknown parent ids; 404 is reserved for direct single-resource gets). Non-numeric id (`/api/clients/abc/projects`) → ✅ local 400, no upstream call.
 5. Repeat step 1 → ✅ cache hit (no new upstream call in logs).
 
 ## MT-7: Time-entry routes
