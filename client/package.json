@@ -1,0 +1,6 @@
+{
+  "name": "@memtime/client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Angular client for the Memtime time-tracking app"
+}

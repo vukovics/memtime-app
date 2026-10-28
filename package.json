@@ -1,0 +1,10 @@
+{
+  "name": "memtime-app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Time-tracking app against the Memtime demo API",
+  "workspaces": [
+    "server",
+    "client"
+  ]
+}
