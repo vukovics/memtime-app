@@ -1,0 +1,51 @@
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid #ddd;
+  padding: 0.375rem 0.75rem;
+  text-align: left;
+}
+
+th {
+  color: #555;
+  font-weight: 600;
+}
+
+.empty,
+.loading {
+  color: #777;
+  font-style: italic;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.pager button,
+.retry {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.125rem 0.5rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: #555;
+  cursor: pointer;
+}
+
+.pager button:hover:not(:disabled),
+.retry:hover {
+  background: #f0f0f0;
+}
+
+.pager button:disabled {
+  color: #aaa;
+  cursor: default;
+}

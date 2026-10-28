@@ -1,0 +1,42 @@
+<h2>Time Entries</h2>
+
+@if (loading()) {
+  <p class="loading">Loading…</p>
+} @else if (failed()) {
+  <button type="button" class="retry" (click)="reload()">Retry</button>
+} @else if (entries().length === 0) {
+  <p class="empty">No time entries yet</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">ID</th>
+        <th scope="col">Task ID</th>
+        <th scope="col">Comment</th>
+        <th scope="col">Start</th>
+        <th scope="col">End</th>
+        <th scope="col">Created At</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (entry of entries(); track entry.id) {
+        <tr>
+          <td>{{ entry.id }}</td>
+          <td>{{ entry.taskId }}</td>
+          <td>{{ entry.comment }}</td>
+          <td>{{ entry.start | date: 'medium' }}</td>
+          <td>{{ entry.end | date: 'medium' }}</td>
+          <td>{{ entry.createdAt | date: 'short' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+@if (!loading() && !failed()) {
+  <nav class="pager">
+    <button type="button" (click)="prevPage()" [disabled]="offset() === 0">Prev</button>
+    <span>Page {{ page() }}</span>
+    <button type="button" (click)="nextPage()" [disabled]="!hasNext()">Next</button>
+  </nav>
+}
