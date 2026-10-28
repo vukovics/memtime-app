@@ -1,0 +1,84 @@
+<h2>Browse</h2>
+
+<ul class="tree">
+  @for (node of clientNodes(); track node.client.id) {
+    <li>
+      <button
+        type="button"
+        class="row"
+        [attr.aria-expanded]="node.expanded"
+        (click)="toggleClient(node)"
+      >
+        <span class="marker" aria-hidden="true">{{ node.expanded ? '▾' : '▸' }}</span>
+        <span>{{ node.client.name }}</span>
+        @if (node.loadingProjects && node.projects === null) {
+          <span class="loading">Loading…</span>
+        }
+      </button>
+      @if (node.expanded) {
+        <ul>
+          @for (projectNode of node.projects; track projectNode.project.id) {
+            <li>
+              <button
+                type="button"
+                class="row"
+                [attr.aria-expanded]="projectNode.expanded"
+                (click)="toggleProject(projectNode)"
+              >
+                <span class="marker" aria-hidden="true">{{ projectNode.expanded ? '▾' : '▸' }}</span>
+                <span>{{ projectNode.project.name }}</span>
+                @if (projectNode.loadingTasks && projectNode.tasks === null) {
+                  <span class="loading">Loading…</span>
+                }
+              </button>
+              @if (projectNode.expanded) {
+                <ul>
+                  @for (task of projectNode.tasks; track task.id) {
+                    <li class="leaf">{{ task.name }}</li>
+                  } @empty {
+                    <li class="empty">No tasks</li>
+                  }
+                  @if (projectNode.moreTasks) {
+                    <li>
+                      @if (projectNode.loadingTasks) {
+                        <span class="loading">Loading…</span>
+                      } @else {
+                        <button type="button" class="load-more" (click)="loadTasks(projectNode)">
+                          Load more
+                        </button>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+            </li>
+          } @empty {
+            <li class="empty">No projects</li>
+          }
+          @if (node.moreProjects) {
+            <li>
+              @if (node.loadingProjects) {
+                <span class="loading">Loading…</span>
+              } @else {
+                <button type="button" class="load-more" (click)="loadProjects(node)">
+                  Load more
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </li>
+  } @empty {
+    @if (!clientsLoading()) {
+      <li class="empty">No clients</li>
+    }
+  }
+  @if (clientsLoading()) {
+    <li><span class="loading">Loading…</span></li>
+  } @else if (moreClients()) {
+    <li>
+      <button type="button" class="load-more" (click)="loadClients()">Load more</button>
+    </li>
+  }
+</ul>

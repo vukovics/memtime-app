@@ -1,0 +1,64 @@
+.tree,
+.tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Indentation per nesting level. */
+.tree ul {
+  padding-left: 1.5rem;
+}
+
+.tree li {
+  margin: 0.125rem 0;
+}
+
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: #f0f0f0;
+}
+
+.marker {
+  width: 1em;
+  color: #888;
+}
+
+.leaf {
+  /* Align leaf text with expandable row labels (marker width + gap + row padding). */
+  padding: 0.25rem 0.5rem 0.25rem calc(0.5rem + 1em + 0.5rem);
+}
+
+.empty,
+.loading {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  color: #777;
+  font-style: italic;
+}
+
+.load-more {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.125rem 0.5rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: #555;
+  cursor: pointer;
+}
+
+.load-more:hover {
+  background: #f0f0f0;
+}
